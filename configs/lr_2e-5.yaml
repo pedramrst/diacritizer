@@ -5,8 +5,8 @@ data:
   raw_col: raw
   diac_col: harakat
   max_chars: 512
-  test_size: 0.10
-  dev_size: 0.5
+  test_size: 0.05
+  dev_size: 0.05
 
 model:
   name: google/canine-s

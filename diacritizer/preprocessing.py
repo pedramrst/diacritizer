@@ -150,19 +150,29 @@ def render_with_labels(chars, label_ids) -> str:
 
 
 def load_and_prepare(repo_or_path=HF_REPO, diac_col="harakat", raw_col="raw",
-                      max_chars=None, test_size=0.10, dev_size=0.5, seed=42,
+                      max_chars=None, test_size=0.05, dev_size=0.05, seed=42,
                       token=None):
     """
     Load the dataset (from the HF Hub by default, or a local csv/parquet
     path), turn every row into (chars, labels), and return a DatasetDict
     with train/dev/test splits.
 
-    `dev_size` is the fraction of the held-out (test_size) portion used for
-    dev vs. final test (default 0.5 -> 90/5/5 split overall).
+    `test_size` and `dev_size` are each independent fractions of the FULL
+    dataset (not of each other) -- test_size=0.05, dev_size=0.05 means 5%
+    test, 5% dev, 90% train, directly. (Internally this still takes two
+    sequential train_test_split calls, since that's all the underlying API
+    supports, but the second split's fraction is rescaled so the externally
+    visible test_size/dev_size stay absolute, independent fractions of the
+    original total -- setting either one doesn't change what the other means.)
 
     `token` is an HF access token, needed since the dataset repo is private
     (falls back to any cached `huggingface-cli login` token if not given).
     """
+    if test_size + dev_size >= 1.0:
+        raise ValueError(
+            f"test_size ({test_size}) + dev_size ({dev_size}) = "
+            f"{test_size + dev_size} must be < 1.0 -- nothing would be left for train"
+        )
     if repo_or_path.endswith(".parquet"):
         import pandas as pd
         df = pd.read_parquet(repo_or_path)
@@ -221,11 +231,16 @@ def load_and_prepare(repo_or_path=HF_REPO, diac_col="harakat", raw_col="raw",
 
     ds = Dataset.from_list(records)
     split = ds.train_test_split(test_size=test_size, seed=seed)
-    devtest = split["test"].train_test_split(test_size=dev_size, seed=seed)
+    # split["train"] is now only (1 - test_size) of the full dataset, so
+    # asking it for `dev_size` of ITSELF would give dev_size * (1 - test_size)
+    # of the original total, not dev_size -- rescale so dev_size stays an
+    # absolute fraction of the full dataset regardless of test_size.
+    dev_fraction_of_remainder = dev_size / (1.0 - test_size)
+    devtrain = split["train"].train_test_split(test_size=dev_fraction_of_remainder, seed=seed)
     result = DatasetDict({
-        "train": split["train"],
-        "dev": devtest["train"],
-        "test": devtest["test"],
+        "train": devtrain["train"],
+        "dev": devtrain["test"],
+        "test": split["test"],
     })
     print(f"[info] prepared train={len(result['train'])} "
           f"dev={len(result['dev'])} test={len(result['test'])}")

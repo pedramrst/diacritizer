@@ -130,6 +130,17 @@ etc. all follow the same three-way override rules.
 
 ## 📦 Setup
 
+Clone the repo (SSH, if you have a key on GitHub — otherwise use the HTTPS
+form) and `cd` into it:
+
+```bash
+git clone git@github.com:pedramrst/diacritizer.git
+# or: git clone https://github.com/pedramrst/diacritizer.git
+cd diacritizer
+```
+
+Then set up the environment:
+
 ```bash
 make setup
 ```
@@ -205,8 +216,10 @@ data:
   raw_col: raw
   diac_col: harakat
   max_chars: 512
-  test_size: 0.10   # held out from train
-  dev_size: 0.5     # split of the held-out portion into dev vs. test
+  # Each is an independent fraction of the FULL dataset (not of each other) --
+  # 0.05 + 0.05 below means 90/5/5 train/dev/test directly.
+  test_size: 0.05
+  dev_size: 0.05
 
 model:
   name: google/canine-s

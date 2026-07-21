@@ -6,9 +6,10 @@ data:
   raw_col: raw
   diac_col: harakat
   max_chars: 512       # truncate examples longer than this (CANINE max is 2046)
-  test_size: 0.10       # held-out fraction, further split into dev/test below
-  dev_size: 0.5          # fraction of the held-out split used for dev vs. test
-                         # (test_size=0.10, dev_size=0.5 -> 90/5/5 train/dev/test)
+  # Each is an independent fraction of the FULL dataset (not of each other) --
+  # 0.05 + 0.05 below means 90/5/5 train/dev/test directly.
+  test_size: 0.05
+  dev_size: 0.05
 
 model:
   name: google/canine-s  # or google/canine-c
@@ -49,7 +50,7 @@ logging:
 hub:
   push_to_hub: false
   repo_id: PedramR/canine-fa-diacritizer  # different HF account than the dataset
-  private: true
+  private: false
 
 checkpoints:
   keep_best_n: 3   # best-by-metric checkpoints to keep locally / push to the Hub

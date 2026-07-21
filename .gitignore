@@ -1,6 +1,9 @@
 # Secrets
 .env
 
+# Local Claude Code config/skills -- not shared via the repo
+.claude/
+
 # Python
 __pycache__/
 *.pyc
