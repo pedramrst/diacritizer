@@ -1,0 +1,34 @@
+# Example sweep trial: short run (few epochs) to compare hyperparameters
+# cheaply before committing to a full training run of the winner.
+data:
+  hf_repo: avaeziaiteam/harakat-dataset
+  raw_col: raw
+  diac_col: harakat
+  max_chars: 512
+  test_size: 0.10
+  dev_size: 0.5
+
+model:
+  name: google/canine-s
+
+training:
+  output_dir: ./canine-fa-diacritizer
+  num_train_epochs: 3
+  learning_rate: 5.0e-5
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 16
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  seed: 42
+  logging_steps: 50
+
+logging:
+  tensorboard_dir: ./runs
+
+hub:
+  push_to_hub: false
+  repo_id: your-username/canine-fa-diacritizer
+  private: true
+
+checkpoints:
+  keep_best_n: 2

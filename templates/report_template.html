@@ -1,0 +1,857 @@
+<title>Persian Diacritization — Model Performance Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ============================================================
+     TOKENS — page-level identity (ink on paper / ink on midnight)
+     ============================================================ */
+  :root {
+    color-scheme: light;
+    --bg:            #eef0f5;
+    --surface:        #ffffff;
+    --surface-2:      #f6f7fa;
+    --text-primary:   #14161f;
+    --text-secondary: #4b4e5c;
+    --text-muted:     #7b7e8c;
+    --border:         rgba(20,22,31,0.10);
+    --border-strong:  rgba(20,22,31,0.16);
+    --accent:         #24316e;
+    --accent-ink:     #1b2657;
+    --accent-soft:    #e7e9f6;
+    --gold:           #93690f;
+    --gold-soft:      #f4ead0;
+    --good:           #0ca30c;
+    --good-soft:      #e3f6e3;
+    --shadow: 0 1px 2px rgba(20,22,31,0.04), 0 8px 24px -12px rgba(20,22,31,0.16);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --bg:            #0c0d13;
+      --surface:        #15172a;
+      --surface-2:      #191b28;
+      --text-primary:   #edeef5;
+      --text-secondary: #b7bac9;
+      --text-muted:     #83879c;
+      --border:         rgba(237,238,245,0.10);
+      --border-strong:  rgba(237,238,245,0.16);
+      --accent:         #7c8bef;
+      --accent-ink:     #c3caff;
+      --accent-soft:    #212555;
+      --gold:           #dcb35a;
+      --gold-soft:      #3a2f14;
+      --good:           #35c95f;
+      --good-soft:      #113a1c;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px -12px rgba(0,0,0,0.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:            #0c0d13;
+    --surface:        #15172a;
+    --surface-2:      #191b28;
+    --text-primary:   #edeef5;
+    --text-secondary: #b7bac9;
+    --text-muted:     #83879c;
+    --border:         rgba(237,238,245,0.10);
+    --border-strong:  rgba(237,238,245,0.16);
+    --accent:         #7c8bef;
+    --accent-ink:     #c3caff;
+    --accent-soft:    #212555;
+    --gold:           #dcb35a;
+    --gold-soft:      #3a2f14;
+    --good:           #35c95f;
+    --good-soft:      #113a1c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px -12px rgba(0,0,0,0.55);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #eef0f5; --surface: #ffffff; --surface-2: #f6f7fa;
+    --text-primary: #14161f; --text-secondary: #4b4e5c; --text-muted: #7b7e8c;
+    --border: rgba(20,22,31,0.10); --border-strong: rgba(20,22,31,0.16);
+    --accent: #24316e; --accent-ink: #1b2657; --accent-soft: #e7e9f6;
+    --gold: #93690f; --gold-soft: #f4ead0; --good: #0ca30c; --good-soft: #e3f6e3;
+    --shadow: 0 1px 2px rgba(20,22,31,0.04), 0 8px 24px -12px rgba(20,22,31,0.16);
+  }
+
+  /* Chart chrome — the validated dataviz reference palette, used verbatim */
+  .viz-root {
+    --c-surface:  #fcfcfb;
+    --c-text-1:   #0b0b0b;
+    --c-text-2:   #52514e;
+    --c-muted:    #898781;
+    --c-grid:     #e1e0d9;
+    --c-baseline: #c3c2b7;
+    --s1: #2a78d6;   /* categorical slot 1 — blue — "this model" */
+    --s2: #eb6834;   /* categorical slot 2 — orange — "no diacritization" baseline */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      --c-surface: #1a1a19; --c-text-1: #ffffff; --c-text-2: #c3c2b7;
+      --c-muted: #898781; --c-grid: #2c2c2a; --c-baseline: #383835;
+      --s1: #3987e5; --s2: #d95926;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    --c-surface: #1a1a19; --c-text-1: #ffffff; --c-text-2: #c3c2b7;
+    --c-muted: #898781; --c-grid: #2c2c2a; --c-baseline: #383835;
+    --s1: #3987e5; --s2: #d95926;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .serif {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  }
+  [dir="rtl"] { font-family: "Geeza Pro", Tahoma, "Segoe UI", sans-serif; }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
+  }
+
+  .page { max-width: 900px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---- Masthead ---- */
+  .masthead { padding: 56px 0 28px; display: flex; flex-direction: column; gap: 18px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+  .eyebrow::before { content: ""; width: 18px; height: 2px; background: var(--gold); display: inline-block; }
+  h1.report-title {
+    font-size: 40px; line-height: 1.12; margin: 0; font-weight: 600;
+    text-wrap: balance; color: var(--text-primary);
+  }
+  .masthead-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--text-secondary); }
+  .masthead-meta b { color: var(--text-primary); font-weight: 600; }
+
+  .mock-banner {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--gold-soft); border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 8px; padding: 14px 16px; font-size: 14px; color: var(--text-secondary);
+  }
+  .mock-banner strong { color: var(--text-primary); }
+
+  nav.toc {
+    display: flex; flex-wrap: wrap; gap: 4px 4px;
+    padding: 10px; margin: 8px 0 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    position: sticky; top: 12px; z-index: 5; box-shadow: var(--shadow);
+  }
+  nav.toc a { text-decoration: none; color: var(--text-secondary); font-size: 13.5px; font-weight: 500; padding: 7px 12px; border-radius: 7px; }
+  nav.toc a:hover { background: var(--surface-2); color: var(--text-primary); }
+
+  section { padding: 52px 0 8px; border-top: 1px solid var(--border); scroll-margin-top: 76px; }
+  section:first-of-type { border-top: none; }
+  .section-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
+  .section-num { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; color: var(--gold); text-transform: uppercase; }
+  h2 { font-size: 26px; margin: 0; font-weight: 600; text-wrap: balance; }
+  .section-dek { color: var(--text-secondary); font-size: 15.5px; max-width: 62ch; margin: 2px 0 0; }
+
+  .prose { max-width: 66ch; font-size: 15.5px; color: var(--text-secondary); }
+  .prose strong { color: var(--text-primary); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0 8px; }
+  @media (max-width: 720px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 18px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px;
+  }
+  .stat-label { font-size: 12.5px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.02em; }
+  .stat-value { font-size: 30px; font-weight: 600; color: var(--text-primary); }
+  .stat-value small { font-size: 15px; font-weight: 500; color: var(--text-secondary); }
+  .stat-sub { font-size: 12.5px; color: var(--text-muted); }
+  .stat-delta { font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .stat-delta.good { color: var(--good); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px 24px 20px; box-shadow: var(--shadow); margin: 14px 0 26px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+  .card .card-dek { margin: 0 0 14px; font-size: 13.5px; color: var(--text-muted); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+
+  .spec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  .spec-list li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; border-bottom: 1px dashed var(--border); padding-bottom: 9px; }
+  .spec-list li:last-child { border-bottom: none; padding-bottom: 0; }
+  .spec-list .k { color: var(--text-muted); }
+  .spec-list .v { color: var(--text-primary); font-weight: 600; text-align: right; }
+
+  .viz-root { background: var(--c-surface); border-radius: 12px; }
+  .chart-wrap { overflow-x: auto; }
+  svg.chart { display: block; width: 100%; height: auto; font-family: inherit; }
+  .axis-label { fill: var(--c-muted); font-size: 11px; }
+  .grid-line { stroke: var(--c-grid); stroke-width: 1; }
+  .val-label { fill: var(--c-text-1); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cat-label { fill: var(--c-text-2); font-size: 12.5px; }
+  .bar { cursor: pointer; }
+  .bar:hover, .bar.hovered { filter: brightness(1.08); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 2px 0 14px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--c-text-2); }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  details.table-toggle { margin-top: 10px; }
+  details.table-toggle summary {
+    cursor: pointer; font-size: 12.5px; color: var(--text-muted); font-weight: 600;
+    list-style: none; display: inline-flex; align-items: center; gap: 5px;
+  }
+  details.table-toggle summary::-webkit-details-marker { display: none; }
+  details.table-toggle summary::before { content: "▸"; font-size: 10px; transition: transform .15s; }
+  details.table-toggle[open] summary::before { transform: rotate(90deg); }
+  table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  table.data-table th, table.data-table td {
+    text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums;
+  }
+  table.data-table th:first-child, table.data-table td:first-child { text-align: left; font-variant-numeric: normal; }
+  table.data-table th { color: var(--text-muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 50;
+    background: var(--text-primary); color: var(--bg);
+    border-radius: 8px; padding: 8px 11px; font-size: 12.5px; line-height: 1.4;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.24);
+    opacity: 0; transform: translateY(4px); transition: opacity .1s, transform .1s;
+    max-width: 220px;
+  }
+  .tooltip.show { opacity: 1; transform: translateY(0); }
+  .tooltip .tt-title { font-weight: 700; margin-bottom: 2px; }
+  .tooltip .tt-row { display: flex; gap: 8px; justify-content: space-between; }
+  .tooltip .tt-key { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+
+  .example {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 22px; margin: 0 0 14px; box-shadow: var(--shadow);
+  }
+  .example-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .example-num { font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: .04em; }
+  .badge { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: .02em; }
+  .badge.good { background: var(--good-soft); color: var(--good); }
+  .badge.warn { background: var(--gold-soft); color: var(--gold); }
+  .ex-row { display: grid; grid-template-columns: 100px 1fr; gap: 4px 14px; align-items: baseline; padding: 6px 0; }
+  .ex-row .ex-k { font-size: 11.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .ex-row .ex-v { font-size: 20px; }
+  .ex-gloss { font-size: 13px; color: var(--text-muted); font-style: italic; }
+  mark.err { background: none; color: var(--gold); text-decoration: underline wavy var(--gold); text-underline-offset: 3px; padding: 0 1px; }
+
+  footer.report-footer {
+    margin-top: 52px; padding-top: 24px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;
+  }
+  .empty-note { font-size: 13.5px; color: var(--text-muted); font-style: italic; }
+
+  @media (max-width: 560px) {
+    h1.report-title { font-size: 30px; }
+    .page { padding: 0 16px 72px; }
+  }
+</style>
+
+<div class="page">
+
+  <div class="masthead">
+    <span class="eyebrow">Model evaluation report</span>
+    <h1 class="report-title serif">Persian Diacritization — Performance Report</h1>
+    <div class="masthead-meta">
+      <span><b>Model</b> <span id="meta-model">—</span></span>
+      <span><b>Base</b> <span id="meta-base">—</span></span>
+      <span><b>Evaluated</b> <span id="meta-date">—</span></span>
+      <span><b>Test set</b> <span id="meta-testset">—</span></span>
+    </div>
+    <div class="mock-banner" id="mock-banner" hidden>
+      <span>&#9998;</span>
+      <span><strong>Sample report — mock data.</strong> <span id="mock-banner-text"></span></span>
+    </div>
+  </div>
+
+  <nav class="toc" aria-label="Report sections">
+    <a href="#summary">Summary</a>
+    <a href="#accuracy">Accuracy</a>
+    <a href="#speed">Speed &amp; resources</a>
+    <a href="#examples">Examples</a>
+    <a href="#methodology">Methodology</a>
+  </nav>
+
+  <!-- 1. SUMMARY -->
+  <section id="summary">
+    <div class="section-head">
+      <span class="section-num">01 — Summary</span>
+      <h2 class="serif">How the model is doing, in one glance</h2>
+      <p class="section-dek">Four numbers a manager can repeat in a hallway. Details on each follow in the sections below.</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-tile">
+        <span class="stat-label">Character accuracy</span>
+        <span class="stat-value" id="stat-char-acc">—<small>%</small></span>
+        <span class="stat-delta good" id="stat-char-acc-delta"></span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">Word accuracy</span>
+        <span class="stat-value" id="stat-word-acc">—<small>%</small></span>
+        <span class="stat-delta good" id="stat-word-acc-delta"></span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">Throughput (batch)</span>
+        <span class="stat-value" id="stat-throughput">—<small>/sec</small></span>
+        <span class="stat-sub" id="stat-throughput-sub"></span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">Model footprint</span>
+        <span class="stat-value" id="stat-size">—<small>MB</small></span>
+        <span class="stat-sub" id="stat-size-sub"></span>
+      </div>
+    </div>
+
+    <p class="prose">In plain terms: out of every 100 letters that need a diacritic mark (like the vowel signs in <span dir="rtl" lang="fa">کِتاب</span>), the model gets about <strong id="callout-char-acc">—</strong> right. Out of every 100 <em>whole words</em> — where every single mark in that word has to be correct — it gets about <strong id="callout-word-acc">—</strong> right. The remaining gap is concentrated in one specific, well-understood position (see §2), not spread randomly across the text.</p>
+  </section>
+
+  <!-- 2. ACCURACY -->
+  <section id="accuracy">
+    <div class="section-head">
+      <span class="section-num">02 — Accuracy &amp; quality</span>
+      <h2 class="serif">Is it actually good, or just better than nothing?</h2>
+      <p class="section-dek">Compared against a "no diacritization" baseline (predicting no mark at all, which is right surprisingly often since most letters don't take one) and broken down by which mark is hardest to get right.</p>
+    </div>
+
+    <div class="card">
+      <h3>Accuracy vs. the do-nothing baseline</h3>
+      <p class="card-dek">"Excl. word-endings" removes the single hardest position in a word (see callout below) so the two charts separate "everyday" accuracy from that one hard case.</p>
+      <div class="viz-root">
+        <div class="chart-wrap">
+          <svg class="chart" id="chart-baseline" viewBox="0 0 720 300" role="img" aria-label="Bar chart comparing model and baseline accuracy across four measures"></svg>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:#2a78d6"></span>This model</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#eb6834"></span>No diacritization (baseline)</span>
+      </div>
+      <details class="table-toggle">
+        <summary>View as table</summary>
+        <table class="data-table" id="table-baseline"></table>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Accuracy by mark type (F1 score)</h3>
+      <p class="card-dek">Sorted from easiest to hardest. Rarer marks are harder — the model sees them far less often during training.</p>
+      <div class="viz-root">
+        <div class="chart-wrap">
+          <svg class="chart" id="chart-perclass" viewBox="0 0 720 340" role="img" aria-label="Horizontal bar chart of F1 score by diacritic mark type"></svg>
+        </div>
+      </div>
+      <details class="table-toggle">
+        <summary>View as table</summary>
+        <table class="data-table" id="table-perclass"></table>
+      </details>
+    </div>
+
+    <div class="card" style="background:var(--accent-soft); border-color: var(--border-strong);">
+      <h3>What the gap actually is</h3>
+      <p class="card-dek" style="color:var(--text-secondary)">Nearly all of the remaining error sits on the <strong style="color:var(--text-primary)">last letter of a word</strong> — most often the "ezafe," a short vowel that links two words together (like <span dir="rtl" lang="fa">کتابِ من</span>, "my book"). Deciding whether that link exists at all depends on sentence grammar, not just spelling, which is the hardest sub-problem in this task. Everywhere else in a word, the model is already at <strong id="callout-char-acc-star" style="color:var(--text-primary)">—</strong> character accuracy.</p>
+    </div>
+  </section>
+
+  <!-- 3. SPEED & RESOURCES -->
+  <section id="speed">
+    <div class="section-head">
+      <span class="section-num">03 — Speed &amp; resource usage</span>
+      <h2 class="serif">What it costs to run</h2>
+      <p class="section-dek">Benchmarked on the hardware we'd actually deploy on. CPU-only numbers are included to answer "do we need a GPU?"</p>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <h3>Benchmark device</h3>
+        <ul class="spec-list" id="spec-device"></ul>
+      </div>
+      <div class="card">
+        <h3>Single sentence vs. batch of 32</h3>
+        <ul class="spec-list" id="spec-single-batch"></ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Throughput scales with batch size, then levels off</h3>
+      <p class="card-dek">Sentences diacritized per second, by batch size.</p>
+      <div class="viz-root">
+        <div class="chart-wrap">
+          <svg class="chart" id="chart-throughput" viewBox="0 0 720 280" role="img" aria-label="Bar chart of throughput in sentences per second by batch size"></svg>
+        </div>
+      </div>
+      <details class="table-toggle">
+        <summary>View as table</summary>
+        <table class="data-table" id="table-throughput"></table>
+      </details>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <h3>Single-sentence latency</h3>
+        <p class="card-dek">Milliseconds. p99 matters most for user-facing latency.</p>
+        <div class="viz-root">
+          <div class="chart-wrap">
+            <svg class="chart" id="chart-latency" viewBox="0 0 320 220" role="img" aria-label="Bar chart of p50, p95, and p99 latency in milliseconds"></svg>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Memory footprint</h3>
+        <p class="card-dek">Peak memory used while running, by scenario.</p>
+        <div class="viz-root">
+          <div class="chart-wrap">
+            <svg class="chart" id="chart-memory" viewBox="0 0 320 220" role="img" aria-label="Bar chart comparing peak memory across benchmarked scenarios"></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="prose" id="cpu-comparison-note" style="font-size:13.5px"></p>
+  </section>
+
+  <!-- 4. EXAMPLES -->
+  <section id="examples">
+    <div class="section-head">
+      <span class="section-num">04 — Example outputs</span>
+      <h2 class="serif">What the model actually produces</h2>
+      <p class="section-dek">Real excerpts from the evaluation dataset (Persian reads right-to-left), run through the model as-is — not cherry-picked.</p>
+    </div>
+    <div id="examples-container"></div>
+  </section>
+
+  <!-- METHODOLOGY / FOOTER -->
+  <section id="methodology">
+    <div class="section-head">
+      <span class="section-num">05 — Methodology</span>
+      <h2 class="serif">How these numbers were produced</h2>
+    </div>
+    <ul class="spec-list" id="spec-methodology" style="max-width:66ch"></ul>
+    <footer class="report-footer">
+      <span id="footer-generated"></span>
+      <span id="footer-mock-note" hidden>This is a sample report populated with mock data for template review — see banner at top.</span>
+    </footer>
+  </section>
+
+</div>
+
+<div class="tooltip" id="tooltip" role="tooltip"></div>
+
+<script id="report-data" type="application/json">__REPORT_DATA__</script>
+<script>
+(function () {
+  "use strict";
+
+  var DATA = JSON.parse(document.getElementById("report-data").textContent);
+  var NS = "http://www.w3.org/2000/svg";
+  var tooltip = document.getElementById("tooltip");
+
+  var LABEL2MARKS = {
+    NONE: "", FATHA: "َ", DAMMA: "ُ", KASRA: "ِ", SOKUN: "ْ",
+    SHADDA: "ّ", SHADDA_FATHA: "َّ", SHADDA_DAMMA: "ُّ",
+    SHADDA_KASRA: "ِّ", FATHATAN: "ً"
+  };
+  var CLASS_LABELS = {
+    SOKUN: "Sokun (no vowel)", FATHA: "Fatha", KASRA: "Kasra", DAMMA: "Damma",
+    SHADDA: "Shadda", SHADDA_FATHA: "Shadda + Fatha", SHADDA_KASRA: "Shadda + Kasra",
+    SHADDA_DAMMA: "Shadda + Damma", FATHATAN: "Fathatan"
+  };
+  var CLASS_ORDER = ["SOKUN", "FATHA", "KASRA", "DAMMA", "SHADDA", "SHADDA_FATHA", "SHADDA_KASRA", "SHADDA_DAMMA", "FATHATAN"];
+
+  function el(tag, attrs) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  function svgText(x, y, str, cls) {
+    var t = el("text", { x: x, y: y, class: cls || "" });
+    t.textContent = str;
+    return t;
+  }
+  function h(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+  function cssvar(node, name) { return getComputedStyle(node).getPropertyValue(name).trim(); }
+  function fillText(id, str) { var n = document.getElementById(id); if (n) n.textContent = str; }
+  function fmt1(v) { return (Math.round(v * 10) / 10).toFixed(1); }
+  function naDash(v, suffix) { return v == null ? "—" : v + (suffix || ""); }
+
+  function showTip(evt, node) {
+    tooltip.innerHTML = "";
+    while (node.firstChild) tooltip.appendChild(node.firstChild);
+    tooltip.classList.add("show");
+    moveTip(evt);
+  }
+  function moveTip(evt) {
+    var pad = 14;
+    var rect = tooltip.getBoundingClientRect();
+    var vx = Math.min(evt.clientX + pad, window.innerWidth - rect.width - 8);
+    var vy = Math.min(evt.clientY + pad, window.innerHeight - rect.height - 8);
+    tooltip.style.left = vx + "px";
+    tooltip.style.top = vy + "px";
+  }
+  function hideTip() { tooltip.classList.remove("show"); }
+  function tipContent(title, rows) {
+    var frag = document.createElement("div");
+    frag.appendChild(h("div", "tt-title", title));
+    rows.forEach(function (r) {
+      var row = h("div", "tt-row");
+      var left = document.createElement("span");
+      if (r.color) {
+        var key = h("span", "tt-key"); key.style.background = r.color; left.appendChild(key);
+      }
+      left.appendChild(document.createTextNode(r.label));
+      row.appendChild(left);
+      row.appendChild(h("strong", null, r.value));
+      frag.appendChild(row);
+    });
+    return frag;
+  }
+  function wireBar(node, titleFn, rowsFn) {
+    node.addEventListener("pointerenter", function (e) { node.classList.add("hovered"); showTip(e, tipContent(titleFn(), rowsFn())); });
+    node.addEventListener("pointermove", moveTip);
+    node.addEventListener("pointerleave", function () { node.classList.remove("hovered"); hideTip(); });
+    node.addEventListener("focus", function (e) {
+      node.classList.add("hovered");
+      var r = node.getBoundingClientRect();
+      showTip({ clientX: r.left + r.width / 2, clientY: r.top }, tipContent(titleFn(), rowsFn()));
+    });
+    node.addEventListener("blur", function () { node.classList.remove("hovered"); hideTip(); });
+    node.setAttribute("tabindex", "0");
+  }
+
+  /* ---- masthead / stat tiles / callouts ---- */
+  fillText("meta-model", DATA.model_name || "—");
+  fillText("meta-base", DATA.base_model || "—");
+  fillText("meta-date", DATA.evaluated_at || "—");
+  fillText("meta-testset", naDash(DATA.test_set && DATA.test_set.n_sentences, " held-out sentences"));
+
+  if (DATA.is_mock) {
+    document.getElementById("mock-banner").hidden = false;
+    fillText("mock-banner-text", DATA.mock_note || "Every number on this page is a placeholder.");
+    document.getElementById("footer-mock-note").hidden = false;
+  }
+
+  var acc = (DATA.accuracy && DATA.accuracy.model) || {};
+  var base = (DATA.accuracy && DATA.accuracy.baseline) || {};
+  var charAcc = (1 - (acc.DER || 0)) * 100, baseCharAcc = (1 - (base.DER || 0)) * 100;
+  var wordAcc = (1 - (acc.WER || 0)) * 100, baseWordAcc = (1 - (base.WER || 0)) * 100;
+  var charAccStar = (1 - (acc["DER*"] || 0)) * 100, baseCharAccStar = (1 - (base["DER*"] || 0)) * 100;
+  var wordAccStar = (1 - (acc["WER*"] || 0)) * 100, baseWordAccStar = (1 - (base["WER*"] || 0)) * 100;
+
+  fillText("stat-char-acc", fmt1(charAcc));
+  fillText("stat-char-acc-delta", "↑ " + fmt1(charAcc - baseCharAcc) + " pts vs. no diacritization");
+  fillText("stat-word-acc", fmt1(wordAcc));
+  fillText("stat-word-acc-delta", "↑ " + fmt1(wordAcc - baseWordAcc) + " pts vs. no diacritization");
+  fillText("callout-char-acc", fmt1(charAcc) + "%");
+  fillText("callout-word-acc", fmt1(wordAcc) + "%");
+  fillText("callout-char-acc-star", fmt1(charAccStar) + "%");
+
+  var throughput = DATA.throughput || [];
+  var batch32 = throughput.filter(function (t) { return t.batch === 32; })[0] || throughput[throughput.length - 1];
+  if (batch32) {
+    fillText("stat-throughput", Math.round(batch32.sentences_per_sec));
+    fillText("stat-throughput-sub", "sentences/sec, batch of " + batch32.batch + ", " + ((DATA.device && (DATA.device.gpu || DATA.device.cpu)) || "unknown device"));
+  }
+
+  var sizeMB = DATA.model_size && DATA.model_size.disk_mb;
+  var params = DATA.model_size && DATA.model_size.params;
+  fillText("stat-size", sizeMB != null ? Math.round(sizeMB) : "—");
+  fillText("stat-size-sub", (params ? (params / 1e6).toFixed(0) + "M parameters" : "") +
+    (sizeMB == null ? " (disk size unavailable for a remote model)" : ", on disk"));
+
+  /* ---- generic chart renderers ---- */
+  function drawGrid(svg, x1, x2, y1, y2, ticks, horizontal, fmt) {
+    ticks.forEach(function (v) {
+      if (horizontal) {
+        var y = y2 - v.frac * (y2 - y1);
+        svg.appendChild(el("line", { x1: x1, x2: x2, y1: y, y2: y, class: "grid-line" }));
+        svg.appendChild(svgText(x1 - 8, y + 4, fmt(v.value), "axis-label")).setAttribute("text-anchor", "end");
+      } else {
+        var x = x1 + v.frac * (x2 - x1);
+        svg.appendChild(el("line", { x1: x, x2: x, y1: y1, y2: y2, class: "grid-line" }));
+        svg.appendChild(svgText(x, y2 + 16, fmt(v.value), "axis-label")).setAttribute("text-anchor", "middle");
+      }
+    });
+  }
+
+  function renderGroupedBars(svgId, tableId, data, legendLabels) {
+    var svg = document.getElementById(svgId);
+    if (!svg || !data.length) return;
+    var root = svg.closest(".viz-root");
+    var s1 = cssvar(root, "--s1"), s2 = cssvar(root, "--s2");
+    var W = 720, H = 300, padL = 34, padR = 12, padT = 10, padB = 56;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var groupW = plotW / data.length, barW = 24, barGap = 4;
+
+    [0, 25, 50, 75, 100].forEach(function (v) {
+      var y = padT + plotH - (v / 100) * plotH;
+      svg.appendChild(el("line", { x1: padL, x2: W - padR, y1: y, y2: y, class: "grid-line" }));
+      svg.appendChild(svgText(padL - 8, y + 4, v + "%", "axis-label")).setAttribute("text-anchor", "end");
+    });
+
+    data.forEach(function (d) {
+      var gx = padL + data.indexOf(d) * groupW + groupW / 2;
+      [["model", d.model, s1, legendLabels[0]], ["base", d.base, s2, legendLabels[1]]].forEach(function (pair, j) {
+        var val = pair[1], color = pair[2], seriesLabel = pair[3];
+        var bh = (val / 100) * plotH;
+        var bx = gx - barGap / 2 - barW + j * (barW + barGap);
+        var by = padT + plotH - bh;
+        var bar = el("rect", { x: bx, y: by, width: barW, height: Math.max(bh, 1), fill: color, class: "bar", rx: 4 });
+        svg.appendChild(bar);
+        svg.appendChild(svgText(bx + barW / 2, by - 6, fmt1(val) + "%", "val-label")).setAttribute("text-anchor", "middle");
+        wireBar(bar, function () { return d.label; }, function () { return [{ label: seriesLabel, value: fmt1(val) + "%", color: color }]; });
+      });
+      var words = d.label.split(" ");
+      var mid = Math.ceil(words.length / 2);
+      var lbl = el("text", { x: gx, y: H - 30, class: "cat-label", "text-anchor": "middle" });
+      var t1 = el("tspan", { x: gx, dy: 0 }); t1.textContent = words.slice(0, mid).join(" ");
+      var t2 = el("tspan", { x: gx, dy: 14 }); t2.textContent = words.slice(mid).join(" ");
+      lbl.appendChild(t1); lbl.appendChild(t2);
+      svg.appendChild(lbl);
+    });
+
+    var tbl = document.getElementById(tableId);
+    if (tbl) {
+      var rows = "<tr><th>Measure</th><th>" + legendLabels[0] + "</th><th>" + legendLabels[1] + "</th></tr>";
+      data.forEach(function (d) { rows += "<tr><td>" + d.label + "</td><td>" + fmt1(d.model) + "%</td><td>" + fmt1(d.base) + "%</td></tr>"; });
+      tbl.innerHTML = rows;
+    }
+  }
+
+  function renderHBars(svgId, tableId, data) {
+    var svg = document.getElementById(svgId);
+    if (!svg || !data.length) return;
+    var root = svg.closest(".viz-root");
+    var s1 = cssvar(root, "--s1");
+    var W = 720, H = 340, padL = 160, padR = 46, padT = 10, padB = 26;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var rowH = plotH / data.length, barH = 18;
+
+    [0, 0.25, 0.5, 0.75, 1].forEach(function (v) {
+      var x = padL + v * plotW;
+      svg.appendChild(el("line", { x1: x, x2: x, y1: padT, y2: H - padB, class: "grid-line" }));
+      svg.appendChild(svgText(x, H - padB + 16, (v * 100).toFixed(0), "axis-label")).setAttribute("text-anchor", "middle");
+    });
+
+    data.forEach(function (d, i) {
+      var cy = padT + i * rowH + rowH / 2;
+      var bw = d.f1 * plotW;
+      svg.appendChild(svgText(padL - 10, cy + 4, d.label, "cat-label")).setAttribute("text-anchor", "end");
+      var bar = el("rect", { x: padL, y: cy - barH / 2, width: Math.max(bw, 1), height: barH, fill: s1, class: "bar", rx: 4 });
+      svg.appendChild(bar);
+      svg.appendChild(svgText(padL + bw + 8, cy + 4, d.f1.toFixed(2), "val-label"));
+      wireBar(bar, function () { return d.label; }, function () { return [{ label: "F1 score", value: d.f1.toFixed(2) }]; });
+    });
+
+    var tbl = document.getElementById(tableId);
+    if (tbl) {
+      var rows = "<tr><th>Mark</th><th>F1 score</th></tr>";
+      data.forEach(function (d) { rows += "<tr><td>" + d.label + "</td><td>" + d.f1.toFixed(2) + "</td></tr>"; });
+      tbl.innerHTML = rows;
+    }
+  }
+
+  function renderVBars(svgId, tableId, data, opts) {
+    var svg = document.getElementById(svgId);
+    if (!svg || !data.length) return;
+    opts = opts || {};
+    var root = svg.closest(".viz-root");
+    var s1 = cssvar(root, "--s1");
+    var vb = svg.viewBox.baseVal;
+    var W = vb.width, H = vb.height;
+    var padL = opts.padL || 40, padR = 12, padT = 20, padB = opts.padB || 46;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var groupW = plotW / data.length, barW = opts.barW || Math.min(40, groupW * 0.55);
+    var max = opts.max || Math.max.apply(null, data.map(function (d) { return d.val; })) * 1.15;
+    var ticks = opts.ticks || [0, max / 2, max];
+
+    ticks.forEach(function (v) {
+      var y = padT + plotH - (v / max) * plotH;
+      svg.appendChild(el("line", { x1: padL, x2: W - padR, y1: y, y2: y, class: "grid-line" }));
+      svg.appendChild(svgText(padL - 8, y + 4, Math.round(v), "axis-label")).setAttribute("text-anchor", "end");
+    });
+
+    data.forEach(function (d, i) {
+      var gx = padL + i * groupW + groupW / 2;
+      var bh = (d.val / max) * plotH;
+      var bx = gx - barW / 2, by = padT + plotH - bh;
+      var bar = el("rect", { x: bx, y: by, width: barW, height: Math.max(bh, 1), fill: s1, class: "bar", rx: 4 });
+      svg.appendChild(bar);
+      svg.appendChild(svgText(gx, by - 8, (opts.valueFmt ? opts.valueFmt(d.val) : d.val), "val-label")).setAttribute("text-anchor", "middle");
+      var lines = d.label.split("\n");
+      var lbl = el("text", { x: gx, y: H - padB + 18, class: "cat-label", "text-anchor": "middle" });
+      lines.forEach(function (line, li) {
+        var tsp = el("tspan", { x: gx, dy: li === 0 ? 0 : 14 });
+        tsp.textContent = line;
+        lbl.appendChild(tsp);
+      });
+      svg.appendChild(lbl);
+      wireBar(bar, function () { return d.label.replace("\n", " "); },
+        function () { return [{ label: opts.unit || "value", value: (opts.valueFmt ? opts.valueFmt(d.val) : d.val) }]; });
+    });
+
+    var tbl = document.getElementById(tableId);
+    if (tbl) {
+      var rows = "<tr><th>" + (opts.catHeader || "Category") + "</th><th>" + (opts.valHeader || "Value") + "</th></tr>";
+      data.forEach(function (d) { rows += "<tr><td>" + d.label.replace("\n", " ") + "</td><td>" + (opts.valueFmt ? opts.valueFmt(d.val) : d.val) + "</td></tr>"; });
+      tbl.innerHTML = rows;
+    }
+  }
+
+  /* ---- Chart 1: baseline comparison ---- */
+  renderGroupedBars("chart-baseline", "table-baseline", [
+    { label: "Character accuracy", model: charAcc, base: baseCharAcc },
+    { label: "Word accuracy", model: wordAcc, base: baseWordAcc },
+    { label: "Char. accuracy, excl. word-endings", model: charAccStar, base: baseCharAccStar },
+    { label: "Word accuracy, excl. word-endings", model: wordAccStar, base: baseWordAccStar }
+  ], ["This model", "No diacritization"]);
+
+  /* ---- Chart 2: per-class F1 ---- */
+  var perClassData = CLASS_ORDER
+    .filter(function (name) { return acc["f1_" + name] != null; })
+    .map(function (name) { return { label: CLASS_LABELS[name], f1: acc["f1_" + name] }; })
+    .sort(function (a, b) { return b.f1 - a.f1; });
+  renderHBars("chart-perclass", "table-perclass", perClassData);
+
+  /* ---- Chart 3: throughput by batch size ---- */
+  var throughputData = throughput.map(function (t) { return { label: "batch " + t.batch, val: t.sentences_per_sec }; });
+  renderVBars("chart-throughput", "table-throughput", throughputData, {
+    catHeader: "Batch size", valHeader: "Sentences / sec", unit: "sentences/sec"
+  });
+
+  /* ---- Chart 4: latency percentiles ---- */
+  var lat = DATA.latency_ms || {};
+  var latencyData = ["p50", "p95", "p99"].filter(function (k) { return lat[k] != null; })
+    .map(function (k) { return { label: k, val: lat[k] }; });
+  renderVBars("chart-latency", null, latencyData, {
+    padL: 34, padB: 34, valueFmt: function (v) { return v + " ms"; }, unit: "latency"
+  });
+
+  /* ---- Chart 5: memory ---- */
+  var memoryData = (DATA.memory || []).map(function (m) {
+    var parts = m.scenario.split(", ");
+    return { label: parts.join("\n"), val: m.gb, raw: m };
+  }).filter(function (d) { return d.val != null; });
+  renderVBars("chart-memory", null, memoryData, {
+    padL: 34, padB: 46, valueFmt: function (v) { return v + " GB"; }, unit: "peak memory"
+  });
+
+  /* ---- device / single-vs-batch spec lists ---- */
+  var dev = DATA.device || {};
+  var specDevice = document.getElementById("spec-device");
+  [
+    ["GPU", dev.gpu || "not available on this device"],
+    ["CPU", dev.cpu || "—"],
+    ["System RAM", dev.ram_gb != null ? dev.ram_gb + " GB" : "—"],
+    ["Stack", ["CUDA " + (dev.cuda || "—"), "PyTorch " + (dev.torch || "—")].join(" · ")],
+    ["Precision", dev.precision || "—"]
+  ].forEach(function (pair) {
+    var li = h("li"); li.appendChild(h("span", "k", pair[0])); li.appendChild(h("span", "v", pair[1]));
+    specDevice.appendChild(li);
+  });
+
+  var single = throughput.filter(function (t) { return t.batch === 1; })[0];
+  var singleMem = (DATA.memory || []).filter(function (m) { return / single$/.test(m.scenario); })[0];
+  var batchMem = (DATA.memory || []).filter(function (m) { return /batch 32$/.test(m.scenario); })[0];
+  var specBatch = document.getElementById("spec-single-batch");
+  var batch32Latency = batch32 ? Math.round(1000 * batch32.batch / batch32.sentences_per_sec) : null;
+  [
+    ["Latency", (lat.p50 != null ? lat.p50 + " ms" : "—") + "  →  " + naDash(batch32Latency, " ms")],
+    ["Throughput", (single ? single.sentences_per_sec : "—") + "/s  →  " + (batch32 ? batch32.sentences_per_sec : "—") + "/s"],
+    ["Peak memory", naDash(singleMem && singleMem.gb, " GB") + "  →  " + naDash(batchMem && batchMem.gb, " GB")],
+    ["Model load (one-time)", naDash(DATA.cold_start_s, " s")]
+  ].forEach(function (pair) {
+    var li = h("li"); li.appendChild(h("span", "k", pair[0])); li.appendChild(h("span", "v", pair[1]));
+    specBatch.appendChild(li);
+  });
+
+  if (DATA.cpu_comparison && single) {
+    var ratio = single.sentences_per_sec / DATA.cpu_comparison.throughput_sentences_per_sec;
+    fillText("cpu-comparison-note", "CPU-only inference works but is roughly " + ratio.toFixed(0) +
+      "× slower per sentence than the primary benchmark device (" +
+      DATA.cpu_comparison.throughput_sentences_per_sec + " vs. " + single.sentences_per_sec +
+      " sentences/sec at batch 1) — fine for offline/background jobs, not recommended for a live, user-facing feature.");
+  } else {
+    document.getElementById("cpu-comparison-note").parentNode.removeChild(document.getElementById("cpu-comparison-note"));
+  }
+
+  /* ---- examples ---- */
+  var container = document.getElementById("examples-container");
+  var examples = DATA.examples || [];
+  if (!examples.length) {
+    container.appendChild(h("p", "empty-note", "No example outputs were captured for this run."));
+  }
+  examples.forEach(function (ex, i) {
+    var card = h("div", "example");
+    var head = h("div", "example-head");
+    head.appendChild(h("span", "example-num", "Example " + (i + 1) + " of " + examples.length));
+    head.appendChild(h("span", "badge " + (ex.exact_match ? "good" : "warn"), ex.exact_match ? "Exact match" : "Mismatch"));
+    card.appendChild(head);
+
+    function markedRow(label, chars, labels, compareLabels) {
+      var row = h("div", "ex-row");
+      row.appendChild(h("span", "ex-k", label));
+      var v = h("span", "ex-v"); v.dir = "rtl"; v.lang = "fa";
+      chars.forEach(function (ch, idx) {
+        v.appendChild(document.createTextNode(ch));
+        var mark = LABEL2MARKS[labels[idx]] || "";
+        if (mark) {
+          var mismatch = compareLabels && labels[idx] !== compareLabels[idx];
+          var span = document.createElement(mismatch ? "mark" : "span");
+          if (mismatch) span.className = "err";
+          span.textContent = mark;
+          v.appendChild(span);
+        }
+      });
+      row.appendChild(v);
+      return row;
+    }
+
+    function plainRow(label, str) {
+      var row = h("div", "ex-row");
+      row.appendChild(h("span", "ex-k", label));
+      var v = h("span", "ex-v"); v.dir = "rtl"; v.lang = "fa"; v.textContent = str;
+      row.appendChild(v);
+      return row;
+    }
+
+    card.appendChild(plainRow("Input", ex.chars.join("")));
+    card.appendChild(markedRow("Model output", ex.chars, ex.pred_labels, ex.true_labels));
+    card.appendChild(markedRow("Reference", ex.chars, ex.true_labels, null));
+    container.appendChild(card);
+  });
+
+  /* ---- methodology ---- */
+  var specMeth = document.getElementById("spec-methodology");
+  var ts = DATA.test_set || {};
+  [
+    ["Dataset", DATA.dataset || "—"],
+    ["Split", DATA.split_sizes || "—"],
+    ["Test set size", [ts.n_chars, ts.n_words].every(function (v) { return v != null; })
+      ? (ts.n_chars / 1000).toFixed(1) + "K characters, " + (ts.n_words / 1000).toFixed(1) + "K words" : "—"],
+    ["Marks predicted", CLASS_ORDER.length + " classes (Fatha, Damma, Kasra, Sokun, Shadda + combinations)"],
+    ["Baseline", "Always predict “no mark”"]
+  ].forEach(function (pair) {
+    var li = h("li"); li.appendChild(h("span", "k", pair[0])); li.appendChild(h("span", "v", pair[1]));
+    specMeth.appendChild(li);
+  });
+
+  fillText("footer-generated", "Generated from " + (DATA.model_name || "model") + " evaluation run · " + (DATA.evaluated_at || ""));
+})();
+</script>

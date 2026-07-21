@@ -1,0 +1,27 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.ipynb_checkpoints/
+
+# Virtual environment
+venv/
+.venv/
+
+# Training artifacts
+canine-fa-diacritizer/
+runs/
+sweeps/
+wandb/
+*.ckpt
+
+# Generated reports (regenerate with `make report` -- not source)
+report.html
+metrics.json
+benchmark.json
+
+# OS
+.DS_Store

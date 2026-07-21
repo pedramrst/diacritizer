@@ -1,0 +1,24 @@
+# Direct dependencies only -- this is a declaration of what the code actually
+# imports, not a full `pip freeze` lockfile; pip resolves the rest. Versions
+# are pinned to what this project is developed/tested against.
+
+# ML stack
+torch==2.13.0
+transformers==5.14.1
+accelerate==1.14.0        # not imported directly, but required by transformers.Trainer
+datasets==5.0.0
+huggingface_hub==1.24.0
+numpy==2.5.1
+
+# Config / data / env
+PyYAML==6.0.3
+python-dotenv==1.2.2
+pandas==3.0.3             # diacritizer.preprocessing.load_and_prepare's local .csv/.parquet path
+
+# Training logs (scripts/*.py never `import tensorboard` -- transformers'
+# TrainingArguments(report_to=["tensorboard"]) needs the package installed,
+# and the Makefile's `train`/`sweep` targets run its CLI directly)
+tensorboard==2.21.0
+
+# notebooks/exploration.ipynb (VS Code / Jupyter kernel support)
+ipykernel==7.3.0

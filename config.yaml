@@ -1,0 +1,56 @@
+# Hyperparameters and settings for scripts/train.py.
+# CLI flags (see `python scripts/train.py --help`) override anything here.
+
+data:
+  hf_repo: avaeziaiteam/harakat-dataset
+  raw_col: raw
+  diac_col: harakat
+  max_chars: 512       # truncate examples longer than this (CANINE max is 2046)
+  test_size: 0.10       # held-out fraction, further split into dev/test below
+  dev_size: 0.5          # fraction of the held-out split used for dev vs. test
+                         # (test_size=0.10, dev_size=0.5 -> 90/5/5 train/dev/test)
+
+model:
+  name: google/canine-s  # or google/canine-c
+
+# Passed to transformers.TrainingArguments almost verbatim -- use ITS field
+# names (num_train_epochs, per_device_train_batch_size, ...), and any other
+# valid TrainingArguments field can be added here too (gradient_accumulation_steps,
+# lr_scheduler_type, bf16, dataloader_num_workers, ...) with no code change needed.
+# A few fields (eval_strategy, save_strategy, metric_for_best_model, report_to,
+# logging_dir) are filled in as defaults this pipeline relies on -- see the
+# caveat in train.py's docstring / README before overriding those specifically.
+training:
+  output_dir: ./canine-fa-diacritizer
+  num_train_epochs: 8
+  learning_rate: 5.0e-5          # standard fine-tuning range for a pretrained transformer encoder
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 16
+  weight_decay: 0.01             # mild L2 regularization -- train set is modest (~6.5K sentences)
+  warmup_ratio: 0.1              # 10% warmup, standard for short (<10 epoch) fine-tunes
+  lr_scheduler_type: cosine      # smoother decay than the HF default (linear); pairs well with warmup
+  optim: adamw_torch
+  max_grad_norm: 1.0             # gradient clipping -- HF's own default, made explicit here
+  seed: 42
+  logging_steps: 50
+  # Sentence length varies a lot at the character level (a few chars to ~380);
+  # batching same-length examples together cuts wasted padding compute --
+  # a real win here, not just a generic default. (train_sampling_strategy is
+  # this transformers version's replacement for the older group_by_length=True.)
+  train_sampling_strategy: group_by_length
+  dataloader_num_workers: 2
+  # NOT set on purpose: save_total_limit. TopKCheckpointCallback (see
+  # diacritizer/checkpointing.py) already owns checkpoint retention on disk;
+  # letting Trainer's own recency-based pruning run too would fight it.
+
+logging:
+  tensorboard_dir: ./runs
+
+hub:
+  push_to_hub: false
+  repo_id: PedramR/canine-fa-diacritizer  # different HF account than the dataset
+  private: true
+
+checkpoints:
+  keep_best_n: 3   # best-by-metric checkpoints to keep locally / push to the Hub
+                    # (the most-recent checkpoint is always additionally kept as final/)
