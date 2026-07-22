@@ -30,11 +30,14 @@ TB_PORT     ?= 6006
 MODEL       ?= ./canine-fa-diacritizer
 TEXT        ?=
 
+SERVE_MODEL ?= PedramR/canine-fa-diacritizer
+PORT        ?= 8000
+
 REPORT_OUT       ?= report.html
 REPORT_METRICS   ?= metrics.json
 REPORT_BENCHMARK ?= benchmark.json
 
-.PHONY: help setup train sweep smoke-test diacritize report clean
+.PHONY: help setup train sweep smoke-test diacritize serve report clean
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | sort | \
@@ -70,6 +73,9 @@ smoke-test: ## Fast tiny-model sanity check of the full pipeline (no real weight
 diacritize: ## Run inference (MODEL=path-or-repo TEXT="...")
 	@if [ -z "$(TEXT)" ]; then echo 'Usage: make diacritize MODEL=... TEXT="..."'; exit 1; fi
 	$(PYTHON) scripts/diacritize.py --model $(MODEL) --text "$(TEXT)"
+
+serve: ## Interactive local web app for trying the model (SERVE_MODEL=repo-or-path PORT=8000)
+	$(PYTHON) scripts/serve.py --model $(SERVE_MODEL) --port $(PORT)
 
 report: ## Evaluate + benchmark MODEL, then generate the manager report (REPORT_OUT=report.html)
 	@echo "[1/3] evaluating accuracy on the test set ..."

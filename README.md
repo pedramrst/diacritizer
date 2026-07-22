@@ -59,6 +59,7 @@ scripts/                    entry points -- run as `python scripts/<name>.py`
   train.py                   fine-tunes CANINE on the diacritization task
   sweep.py                   runs train.py once per config in a directory, compares results
   diacritize.py               applies a trained model to raw text
+  serve.py                     lightweight interactive web app for trying a trained model
   benchmark.py                speed / memory / device benchmarking + example outputs
   generate_report.py          renders the HTML report from metrics.json + benchmark.json (no ML deps)
   smoke_test.py               fast tiny-model pipeline check (no real weights) -- run after setup
@@ -88,6 +89,7 @@ make smoke-test                               # fast pipeline check on a new mac
 make train                                    # train.py + TensorBoard together, CONFIG=... ARGS="..."
 make sweep                                    # sweep.py + TensorBoard together, CONFIGS_DIR=... OUT_ROOT=... ARGS="..."
 make diacritize MODEL=... TEXT="..."          # run inference
+make serve SERVE_MODEL=... PORT=8000          # interactive web app for trying a model
 make report MODEL=...                         # evaluate + benchmark MODEL, generate report.html
 make clean                                    # remove __pycache__ / caches (checkpoints and runs/ are left alone on purpose)
 ```
@@ -419,6 +421,19 @@ Run inference:
 ```bash
 python scripts/diacritize.py --model ./canine-fa-diacritizer --text "کتاب من"
 python scripts/diacritize.py --model your-username/canine-fa-diacritizer --text "..."
+```
+
+To try a model interactively instead of one `--text` at a time, `make serve`
+(or `python scripts/serve.py --model ...`) starts a local web app at
+`http://127.0.0.1:8000` with a textarea for raw Persian text and the
+diacritized result rendered back. It's a stdlib-only `http.server` app (no
+new dependencies) that loads the model once and reuses the same inference
+code as `diacritize.py`.
+
+```bash
+make serve                                          # defaults to the public Hub repo (PedramR/canine-fa-diacritizer)
+make serve SERVE_MODEL=./canine-fa-diacritizer       # or a local checkpoint
+make serve SERVE_MODEL=your-username/canine-fa-diacritizer PORT=8080
 ```
 
 ## 📈 Metrics
