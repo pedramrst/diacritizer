@@ -415,7 +415,13 @@ def main():
           f"(run: tensorboard --logdir {args.tensorboard_dir})")
 
     if args.push_to_hub:
-        upload_folder_to_hub(out_dir, args.hub_repo_id, None, model_token, args.hub_private)
+        # out_dir is the Trainer's output_dir, so it also holds the local-only
+        # checkpoint-<step>/ dirs TopKCheckpointCallback keeps -- exclude them
+        # so only the inference model files (config.json, model.safetensors,
+        # tokenizer, metrics.json) land at the repo root, keeping it a
+        # standard single-model repo.
+        upload_folder_to_hub(out_dir, args.hub_repo_id, None, model_token,
+                             args.hub_private, ignore_patterns=["checkpoint-*"])
         print(f"[info] pushed model to https://huggingface.co/{args.hub_repo_id}")
 
 

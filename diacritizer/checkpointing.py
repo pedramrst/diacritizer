@@ -40,7 +40,8 @@ from transformers import TrainerCallback
 from diacritizer.metrics import predict_examples, sequence_metrics
 
 
-def upload_folder_to_hub(local_dir, repo_id, path_in_repo, token, private=True):
+def upload_folder_to_hub(local_dir, repo_id, path_in_repo, token, private=True,
+                         ignore_patterns=None):
     api = HfApi(token=token)
     api.create_repo(repo_id, private=private, exist_ok=True, repo_type="model")
     api.upload_folder(
@@ -49,6 +50,7 @@ def upload_folder_to_hub(local_dir, repo_id, path_in_repo, token, private=True):
         path_in_repo=path_in_repo,
         token=token,
         commit_message=f"Update {path_in_repo or '(root)'}",
+        ignore_patterns=ignore_patterns,
     )
 
 
