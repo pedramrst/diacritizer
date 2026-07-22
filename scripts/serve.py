@@ -158,6 +158,10 @@ def main():
     ap.add_argument("--model", default=DEFAULT_MODEL,
                     help="local checkpoint dir, or an HF Hub repo id "
                          f"(default: {DEFAULT_MODEL})")
+    ap.add_argument("--subfolder", default="",
+                    help="subfolder within --model holding config.json/model.safetensors, "
+                         "if any -- the Hub repo is a standard single-model repo (model "
+                         "files at the root) by default, so this is normally left empty")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--host", default="127.0.0.1")
     args = ap.parse_args()
@@ -165,10 +169,12 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     hub_token = os.environ.get("HF_MODEL_TOKEN")
 
-    print(f"Loading {args.model} ...")
-    tokenizer = CanineTokenizer.from_pretrained(args.model, token=hub_token)
+    print(f"Loading {args.model} (subfolder={args.subfolder!r}) ...")
+    tokenizer = CanineTokenizer.from_pretrained(
+        args.model, subfolder=args.subfolder, token=hub_token
+    )
     model = CanineForTokenClassification.from_pretrained(
-        args.model, token=hub_token
+        args.model, subfolder=args.subfolder, token=hub_token
     ).to(device).eval()
     print(f"Loaded on {device}.")
 

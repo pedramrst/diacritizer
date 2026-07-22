@@ -36,16 +36,18 @@ HF tokens come from .env:
     HF_MODEL_TOKEN   -- write access to the (different-account) model repo,
                         only needed with --push_to_hub
 
-Checkpoint durability (important on ephemeral instances, e.g. Vast.ai): with
---push_to_hub, the best `checkpoints.keep_best_n` checkpoints (by
-macro_f1_diacritics on dev, each with a per-checkpoint metrics.json) plus the
-TensorBoard logs are pushed to the Hub as training progresses -- not only at
-the end -- via checkpointing.TopKCheckpointCallback. At the end, the last
-epoch's full checkpoint (with optimizer/scheduler state) is pushed as
-final/, and the best-at-end model as best/. To resume after losing the
-instance mid-run, download a checkpoint-<step>/ or final/ folder back down
-(see checkpointing.download_checkpoint_from_hub) and pass its local path to
---resume_from_checkpoint.
+Hub repo layout: with --push_to_hub, the Hub repo is kept a standard,
+single-model repo -- config.json, model.safetensors, tokenizer files, ...
+pushed to the repo ROOT at the very end of training (the best-at-end model;
+see checkpointing.upload_folder_to_hub), loadable via plain
+`from_pretrained(repo_id)`, no subfolder needed. TensorBoard logs are pushed
+alongside it, under tensorboard_logs/<run_name>/, as training progresses
+(checkpointing.TopKCheckpointCallback) -- an extra folder like that doesn't
+interfere with from_pretrained, which only fetches the specific filenames it
+needs. Per-epoch checkpoints (with optimizer/scheduler state, needed for
+--resume_from_checkpoint) are kept locally only, never pushed to the Hub --
+if a training instance is lost mid-run (e.g. Vast.ai), resume from whatever
+checkpoint survived on that instance's own disk.
 """
 
 import argparse
@@ -211,13 +213,6 @@ def build_argparser(cfg):
 
     ap.add_argument("--resume_from_checkpoint", default=None,
                     help="local checkpoint dir (with optimizer/scheduler state) to resume from")
-    ap.add_argument("--resume_from_hub_repo", default=None,
-                    help="if set, download --resume_from_hub_subfolder from this HF repo "
-                         "into --resume_download_dir before resuming (use after losing the instance)")
-    ap.add_argument("--resume_from_hub_subfolder", default="final",
-                    help="which subfolder to download for --resume_from_hub_repo "
-                         "(final, best, or checkpoint-<step>)")
-    ap.add_argument("--resume_download_dir", default="./resume_checkpoint")
     ap.add_argument("--no_auto_resume", action="store_true",
                     help="by default, if the resolved output_dir already has a checkpoint "
                          "(e.g. this exact command was interrupted and rerun), training "
@@ -295,15 +290,7 @@ def main():
     if args.push_to_hub and not model_token:
         raise SystemExit("--push_to_hub requires HF_MODEL_TOKEN to be set in .env")
 
-    if args.resume_from_hub_repo:
-        from diacritizer.checkpointing import download_checkpoint_from_hub
-        args.resume_from_checkpoint = download_checkpoint_from_hub(
-            args.resume_from_hub_repo, args.resume_from_hub_subfolder,
-            model_token, args.resume_download_dir,
-        )
-        print(f"[info] downloaded {args.resume_from_hub_subfolder} from "
-              f"{args.resume_from_hub_repo} -> {args.resume_from_checkpoint}")
-    elif not args.resume_from_checkpoint and not args.no_auto_resume:
+    if not args.resume_from_checkpoint and not args.no_auto_resume:
         # Same command, same output_dir, rerun after an interruption (crash,
         # OOM kill, instance reboot but disk survived): pick up where it left
         # off instead of silently starting over. Use --no_auto_resume to opt
@@ -353,8 +340,8 @@ def main():
 
     training_args = TrainingArguments(**training_kwargs)
 
-    # Pushes the best-N checkpoints (+ TensorBoard logs) to the Hub as
-    # training progresses, not just at the end -- see checkpointing.py.
+    # Keeps only the best-N checkpoints on local disk and pushes TensorBoard
+    # logs to the Hub as training progresses -- see checkpointing.py.
     topk_callback = TopKCheckpointCallback(
         metric_name=f"eval_{training_args.metric_for_best_model}",
         keep_best_n=args.keep_best_n,
@@ -428,16 +415,8 @@ def main():
           f"(run: tensorboard --logdir {args.tensorboard_dir})")
 
     if args.push_to_hub:
-        upload_folder_to_hub(out_dir, args.hub_repo_id, "best", model_token, args.hub_private)
-        print(f"[info] pushed best/ to https://huggingface.co/{args.hub_repo_id}")
-
-        # The last epoch's FULL checkpoint (with optimizer/scheduler state),
-        # kept on disk by topk_callback regardless of its score -- lets you
-        # truly resume training (not just reload weights) if it ended early.
-        if topk_callback.last_checkpoint_dir:
-            upload_folder_to_hub(topk_callback.last_checkpoint_dir, args.hub_repo_id,
-                                  "final", model_token, args.hub_private)
-            print(f"[info] pushed final/ to https://huggingface.co/{args.hub_repo_id}")
+        upload_folder_to_hub(out_dir, args.hub_repo_id, None, model_token, args.hub_private)
+        print(f"[info] pushed model to https://huggingface.co/{args.hub_repo_id}")
 
 
 if __name__ == "__main__":

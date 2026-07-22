@@ -18,9 +18,9 @@ Usage:
     python sweep.py --configs configs/ --out_root ./sweeps/run1 --extra_args "--push_to_hub"
 
 To continue training the winning config for more epochs afterwards, just
-point train.py's --model at that config's output dir (or its pushed best/ on
-the Hub) and rerun with a higher --epochs -- no special "continue" flag
-needed, since --model already accepts any checkpoint directory or repo id.
+point train.py's --model at that config's output dir (or its Hub repo) and
+rerun with a higher --epochs -- no special "continue" flag needed, since
+--model already accepts any checkpoint directory or repo id.
 
 If a sweep run is interrupted, just rerun the same sweep.py command -- each
 train.py invocation auto-resumes from its own --out if a checkpoint is

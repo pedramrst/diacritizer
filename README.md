@@ -369,50 +369,44 @@ This also works after a sweep run is interrupted — just rerun the same
 <details>
 <summary>Click to expand</summary>
 
-Push checkpoints to the Hub as training progresses, not just at the end
-(uses `HF_MODEL_TOKEN`) — important since Vast/spot instances aren't
-persistent:
+Push the trained model to the Hub at the end of training (uses
+`HF_MODEL_TOKEN`), plus TensorBoard logs as training progresses — the latter
+matters since Vast/spot instances aren't persistent:
 
 ```bash
 python scripts/train.py --config config.yaml --push_to_hub --hub_repo_id your-username/canine-fa-diacritizer
 ```
 
-This creates/updates `your-username/canine-fa-diacritizer` on the Hub with:
+This creates/updates `your-username/canine-fa-diacritizer` on the Hub as a
+**standard, single-model repo** — loadable via plain
+`from_pretrained("your-username/canine-fa-diacritizer")`, no subfolder needed:
 
 ```
-checkpoint-<step>/           the keep_best_n checkpoints seen so far, by dev macro_f1_diacritics
-                              (full Trainer checkpoint incl. optimizer/scheduler state -- resumable)
-                              + metrics.json (full DER/WER/DER*/WER* report on dev)
-final/                        the LAST epoch's full checkpoint, always kept regardless of its
-                              score, pushed once training ends -- also resumable
-best/                         trainer.save_model() output for the best-by-metric model
-                              (no optimizer state -- for inference / as a --model value,
-                              not for --resume_from_checkpoint) + metrics.json (test set)
-tensorboard_logs/<run_name>/  re-pushed after every epoch, so logs are never more than
-                              one epoch stale if the instance disappears mid-run
+config.json, model.safetensors, ...   trainer.save_model() output for the best-by-metric
+                                        model (no optimizer state), pushed to the repo ROOT
+                                        at the end of training
+metrics.json                           test-set DER/WER/DER*/WER* report, at the repo root
+tensorboard_logs/<run_name>/           re-pushed after every epoch, so logs are never more
+                                        than one epoch stale if the instance disappears mid-run
 ```
+
+Per-epoch checkpoints (the `keep_best_n` best-by-metric ones, full Trainer
+state incl. optimizer/scheduler) are kept on **local disk only** — never
+pushed to the Hub, so the repo doesn't get bloated with resumable-training
+state that has no place in a standard model repo. If a training instance is
+lost mid-run, resume from whatever checkpoint survived on that instance's own
+disk (`--resume_from_checkpoint`); there's no Hub-based fallback.
 
 ⚠️ If you push more than one config's runs to the *same* `--hub_repo_id`,
-`checkpoint-<step>/`/`final/`/`best/` will collide across configs since
-they're not namespaced by run — use a distinct `--hub_repo_id` per config,
-or only push the winner after a sweep, if you need more than one config's
-checkpoints preserved on the Hub at once. `tensorboard_logs/<run_name>/` is
-safe to share, since it is namespaced.
+the model files at the repo root will collide across configs — use a
+distinct `--hub_repo_id` per config, or only push the winner after a sweep,
+if you need more than one config's model preserved on the Hub at once.
+`tensorboard_logs/<run_name>/` is safe to share, since it is namespaced.
 
-If the instance is lost mid-run, resume from a Hub checkpoint (downloads it
-first):
-
-```bash
-python scripts/train.py --config config.yaml --push_to_hub --hub_repo_id your-username/canine-fa-diacritizer \
-    --resume_from_hub_repo your-username/canine-fa-diacritizer --resume_from_hub_subfolder final
-```
-
-⚠️ `--resume_from_hub_subfolder` accepts `final`, `checkpoint-<step>`, but
-**not** `best` — that folder has no optimizer/scheduler state to resume
-from. If training instead finished normally and you just want to keep
-fine-tuning the winning config longer, no special resume flag is needed —
-just point `--model` at that config's output dir (or its `best/` on the Hub)
-and rerun with a higher `--epochs`.
+If training finished normally and you just want to keep fine-tuning the
+winning config longer, no special resume flag is needed — just point
+`--model` at that config's output dir (or its Hub repo) and rerun with a
+higher `--epochs`.
 
 </details>
 
@@ -528,7 +522,7 @@ per config if you do).
 
 💡 Sweep configs are typically short (few epochs) to compare cheaply — once
 you've picked a winner, keep fine-tuning it longer by pointing `--model` at
-its output dir (or Hub `best/`) with a higher `--epochs`; no separate resume
+its output dir (or its Hub repo) with a higher `--epochs`; no separate resume
 mechanism is needed for that (resume is only for continuing an interrupted
 run, see above).
 

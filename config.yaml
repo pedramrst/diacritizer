@@ -53,5 +53,5 @@ hub:
   private: false
 
 checkpoints:
-  keep_best_n: 3   # best-by-metric checkpoints to keep locally / push to the Hub
-                    # (the most-recent checkpoint is always additionally kept as final/)
+  keep_best_n: 3   # best-by-metric checkpoints to keep on local disk (never pushed to
+                    # the Hub); the most-recent checkpoint is always additionally kept too

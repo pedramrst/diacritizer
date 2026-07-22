@@ -1,6 +1,6 @@
 """
-Checkpoint retention + HF Hub durability for training on ephemeral instances
-(e.g. Vast.ai, which can disappear between sessions).
+Checkpoint retention + HF Hub TensorBoard durability for training on ephemeral
+instances (e.g. Vast.ai, which can disappear between sessions).
 
 TopKCheckpointCallback hooks into Trainer's own per-epoch checkpoints
 (save_strategy="epoch" already writes a full checkpoint-<step>/ dir with
@@ -16,22 +16,25 @@ needs). It:
   - keeps only the best-N-by-metric checkpoints on local disk, PLUS whichever
     is most recent (so "final" always survives even if it didn't score well),
     deleting everything else to save disk space.
-  - pushes every checkpoint it decides to keep to the HF Hub, as
-    checkpoint-<step>/, alongside a metrics.json with that same full dev
-    report (reused from the cache above, not recomputed).
-  - re-pushes the TensorBoard log directory on every save, so logs are never
-    more than one epoch stale if the instance dies.
+  - re-pushes the TensorBoard log directory (tensorboard_logs/<run_name>/) to
+    the HF Hub on every save, so logs are never more than one epoch stale if
+    the instance dies.
 
-train.py additionally pushes the very last checkpoint as final/ and the
-best-at-end model (trainer.save_model() output, no optimizer state, meant for
-inference) as best/.
+Checkpoints themselves are NOT pushed to the Hub (only kept locally) -- the
+Hub repo is meant to stay a standard, single-model repo (config.json,
+model.safetensors, ... at the repo root, loadable via plain
+`from_pretrained(repo_id)`), with tensorboard_logs/ alongside it. train.py
+pushes the best-at-end model (trainer.save_model() output, no optimizer
+state, meant for inference) to the repo root at the very end of training. If
+a training instance is lost mid-run, resume from whatever checkpoint
+survived on that instance's local disk (--resume_from_checkpoint) -- there
+is no Hub-based fallback.
 """
 
-import json
 import os
 import shutil
 
-from huggingface_hub import HfApi, snapshot_download
+from huggingface_hub import HfApi
 from transformers import TrainerCallback
 
 from diacritizer.metrics import predict_examples, sequence_metrics
@@ -45,21 +48,8 @@ def upload_folder_to_hub(local_dir, repo_id, path_in_repo, token, private=True):
         repo_id=repo_id,
         path_in_repo=path_in_repo,
         token=token,
-        commit_message=f"Update {path_in_repo}",
+        commit_message=f"Update {path_in_repo or '(root)'}",
     )
-
-
-def download_checkpoint_from_hub(repo_id, path_in_repo, token, local_dir):
-    """Pull a checkpoint-<step>/, final/, or best/ folder back down (e.g. after
-    losing the training instance) and return its local path, ready to pass to
-    --resume_from_checkpoint."""
-    snapshot_download(
-        repo_id=repo_id,
-        token=token,
-        local_dir=local_dir,
-        allow_patterns=f"{path_in_repo}/*",
-    )
-    return os.path.join(local_dir, path_in_repo)
 
 
 class TopKCheckpointCallback(TrainerCallback):
@@ -80,7 +70,6 @@ class TopKCheckpointCallback(TrainerCallback):
         self.greater_is_better = greater_is_better
 
         self.trainer = None  # set via set_trainer() right after Trainer(...)
-        self.last_checkpoint_dir = None
         self._scored = []  # [(score, step, local_dir), ...], sorted best-first
         self._last_full_report = None  # cache: sequence_metrics() dict from the latest dev eval
 
@@ -148,7 +137,6 @@ class TopKCheckpointCallback(TrainerCallback):
         ckpt_dir = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
         if not os.path.isdir(ckpt_dir):
             return control
-        self.last_checkpoint_dir = ckpt_dir
 
         score = self._latest_metric(state)
         if score is not None:
@@ -164,28 +152,9 @@ class TopKCheckpointCallback(TrainerCallback):
                 shutil.rmtree(d, ignore_errors=True)
         self._scored = [e for e in self._scored if e[2] in keep_dirs]
 
-        is_top_n = ckpt_dir in {d for _, _, d in self._scored[:self.keep_best_n]}
-        if self.hub_repo_id and score is not None and is_top_n:
-            self._push_checkpoint(ckpt_dir, f"checkpoint-{state.global_step}", score)
-
         if self.hub_repo_id and self.tensorboard_dir and os.path.isdir(self.tensorboard_dir):
             upload_folder_to_hub(self.tensorboard_dir, self.hub_repo_id,
                                   f"tensorboard_logs/{self.run_name}",
                                   self.hub_token, self.hub_private)
 
         return control
-
-    def _push_checkpoint(self, local_dir, path_in_repo, score):
-        # on_evaluate always runs immediately before on_save in Trainer's own
-        # per-epoch loop, so the cache is fresh -- no need to recompute here.
-        if self._last_full_report is not None:
-            report = {self.metric_name: score, **self._last_full_report}
-            with open(os.path.join(local_dir, "metrics.json"), "w", encoding="utf-8") as f:
-                json.dump(report, f, ensure_ascii=False, indent=2)
-        else:
-            print(f"[warn] no cached dev report available for {path_in_repo}; metrics.json omitted")
-
-        upload_folder_to_hub(local_dir, self.hub_repo_id, path_in_repo,
-                              self.hub_token, self.hub_private)
-        print(f"[info] pushed {path_in_repo} (score={score:.4f}) to "
-              f"https://huggingface.co/{self.hub_repo_id}/tree/main/{path_in_repo}")
