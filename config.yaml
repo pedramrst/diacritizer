@@ -48,7 +48,7 @@ logging:
   tensorboard_dir: ./runs
 
 hub:
-  push_to_hub: false
+  push_to_hub: true
   repo_id: PedramR/canine-fa-diacritizer  # different HF account than the dataset
   private: false
 

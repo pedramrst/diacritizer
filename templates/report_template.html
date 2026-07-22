@@ -136,14 +136,6 @@
   .masthead-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--text-secondary); }
   .masthead-meta b { color: var(--text-primary); font-weight: 600; }
 
-  .mock-banner {
-    display: flex; align-items: flex-start; gap: 12px;
-    background: var(--gold-soft); border: 1px solid var(--border);
-    border-left: 3px solid var(--gold);
-    border-radius: 8px; padding: 14px 16px; font-size: 14px; color: var(--text-secondary);
-  }
-  .mock-banner strong { color: var(--text-primary); }
-
   nav.toc {
     display: flex; flex-wrap: wrap; gap: 4px 4px;
     padding: 10px; margin: 8px 0 8px;
@@ -270,10 +262,6 @@
       <span><b>Base</b> <span id="meta-base">—</span></span>
       <span><b>Evaluated</b> <span id="meta-date">—</span></span>
       <span><b>Test set</b> <span id="meta-testset">—</span></span>
-    </div>
-    <div class="mock-banner" id="mock-banner" hidden>
-      <span>&#9998;</span>
-      <span><strong>Sample report — mock data.</strong> <span id="mock-banner-text"></span></span>
     </div>
   </div>
 
@@ -441,7 +429,6 @@
     <ul class="spec-list" id="spec-methodology" style="max-width:66ch"></ul>
     <footer class="report-footer">
       <span id="footer-generated"></span>
-      <span id="footer-mock-note" hidden>This is a sample report populated with mock data for template review — see banner at top.</span>
     </footer>
   </section>
 
@@ -540,12 +527,6 @@
   fillText("meta-base", DATA.base_model || "—");
   fillText("meta-date", DATA.evaluated_at || "—");
   fillText("meta-testset", naDash(DATA.test_set && DATA.test_set.n_sentences, " held-out sentences"));
-
-  if (DATA.is_mock) {
-    document.getElementById("mock-banner").hidden = false;
-    fillText("mock-banner-text", DATA.mock_note || "Every number on this page is a placeholder.");
-    document.getElementById("footer-mock-note").hidden = false;
-  }
 
   var acc = (DATA.accuracy && DATA.accuracy.model) || {};
   var base = (DATA.accuracy && DATA.accuracy.baseline) || {};
